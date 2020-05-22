@@ -17,6 +17,12 @@ do
         kubectl run adhoc$i --image=dockerchandrashekhar/alping --restart Never
 done
 
+
+
+
+
+
+
 ---------QUE-2---------
 
 -----YAML File To Create Pod-----
