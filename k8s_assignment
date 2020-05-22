@@ -1,0 +1,45 @@
+---------QUE-1---------
+
+
+-----Dockerfile for alpine image-----
+from alpine
+entrypoint ping 8.8.8.8
+expose 80
+
+-----Build It-----
+docker build -t dockerchandrashekhar/alping
+
+-----Push To Docker Hub-----
+
+------Shell Script To Make Pods-----
+for i in {1..10}
+do
+        kubectl run adhoc$i --image=dockerchandrashekhar/alping --restart Never
+done
+
+---------QUE-2---------
+
+-----YAML File To Create Pod-----
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    app: nginxpod
+  name: nginxpod
+spec:
+  containers:
+  - image: nginx
+    name: nginxpod
+    ports:
+    - containerPort: 80
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+
+------Expose And Create Service------
+kubectl expose pods nginxpod --type NodePort --port 80
+
+------Open In Browser------
+------Take Screenshot (nginxpod_1.png)------
