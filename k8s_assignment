@@ -1,6 +1,5 @@
 ---------QUE-1---------
 
-
 -----Dockerfile for alpine image-----
 from alpine
 entrypoint ping 8.8.8.8
@@ -10,6 +9,9 @@ expose 80
 docker build -t dockerchandrashekhar/alping
 
 -----Push To Docker Hub-----
+docker login
+docker push dockerchandrashekhar/alping
+
 
 ------Shell Script To Make Pods-----
 for i in {1..10}
@@ -17,7 +19,13 @@ do
         kubectl run adhoc$i --image=dockerchandrashekhar/alping --restart Never
 done
 
+-----Saving It as adhocpod.sh-------
+-----Giving Executable Permission Then Execute It------
+chmod +x adhocpod.sh
+./adhocpod.sh
 
+----See Output By--------
+kubectl get po
 
 
 
@@ -48,4 +56,147 @@ status: {}
 kubectl expose pods nginxpod --type NodePort --port 80
 
 ------Open In Browser------
-------Take Screenshot (nginxpod_1.png)------
+------Taking Screenshot (nginxpod_1.png)------
+
+
+------YAML File For RBAC(Role Based Access Control)-------
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-list
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-list
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: pods-list
+  apiGroup: rbac.authorization.k8s.io
+  
+  
+-----Saving it as q2rbac.yaml-----
+-----Apply it to nginxpod---------
+kubectl apply -f nginxpod q2rbac.yaml
+
+
+-----Open nginxpod Shell-----
+kubectl exec -it nginxpod sh
+
+
+-----After Openig Install Some Requirements-------
+apt-get update
+apt install python3
+apt install python3-pip
+pip3 install kubernetes
+
+
+
+-----Python Script To Get List Of Pods------
+from kubernetes import client, config
+config.load_incluster_config()
+
+v1 = client.CoreV1Api()
+blank_space = "&nbsp"
+print("--------Listing pods with their IPs-------")
+pod_list = v1.list_namespaced_pod(namespace="default")
+for pod in pod_list.items:
+    print("<br>%s%s%s%s%s" % (pod.metadata.name,blank_space*8,pod.status.phase,blank_space*8,pod.status.pod_ip))
+    
+
+-----Saving it as pod_list.py------
+------Run Python Script and Save Output to index.html------
+python3 pod_list.py >  /usr/share/nginx/html/index.html
+
+
+----Open In Browser-----
+----Taking Screenshot(nginxpod_list.png)-----
+
+
+
+
+
+---------QUE-3---------
+-----In Existing Pod(Created In Above Question) We Apply Another YAML File To Get List Of Services-------
+-----And Send Pod's List And Service's List To Given Email-------
+
+-----YAML File For Service RBAC(Role Based Access Control)-------
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: services-list
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["list"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: services-list
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: services-list
+  apiGroup: rbac.authorization.k8s.io
+
+
+------Saving It As q3rbac.yaml-------
+------Apply It To nginxpod-----------
+kubectl apply -f nginxpod q3rbac.yaml
+
+-----Open nginxpod Shell------
+kubectl exec -it nginxpod sh
+
+------Install smtplib module for python to Send Email------
+pip3 install secure-smtplib
+
+
+
+-----Python Script To Get List Of Pods & Services & Send To Email------
+from kubernetes import client, config
+import smtplib
+from email.message import EmailMessage
+
+config.load_incluster_config()
+v1 = client.CoreV1Api()
+email_body = []
+email_body.append("--------Listing pods with their IPs-------")
+pod_list = v1.list_namespaced_pod(namespace="default")
+for pod in pod_list.items:
+    email_body.append("\n%s\t%s\t\t%s" % (pod.metadata.name,pod.status.phase, pod.status.pod_ip))
+
+email_body.append("\n\n-----------Listing all services-----------")
+services = v1.list_namespaced_service(namespace='default')
+for svc in services.items:
+   email_body.append('\n%s'%(svc.metadata.name))
+
+EMAIL_ADDRESS = 'Enter Sender Email Address'
+EMAIL_PASSWORD = 'Enter Email Password'
+
+msg = EmailMessage()
+msg['Subject'] = 'Chandrashekhark8slove2020'
+msg['From'] = EMAIL_ADDRESS
+msg['To'] = 'Enter Receiver Email Address'
+msg.set_content(''.join(email_body))
+
+with smtplib.SMTP_SSL('smtp.gmail.com',465) as smtp:
+    smtp.login(EMAIL_ADDRESS,EMAIL_PASSWORD)
+    smtp.send_message(msg)
+
+
+
+------Saving It As PodnService_list.py---------
+------Execute It With Internet Connection------
+python3 PodnService_list.py
